@@ -3,6 +3,7 @@ package com.portal.jobsphere.controller;
 import java.util.List;
 import java.util.UUID;
 
+import com.portal.jobsphere.service.ProfileService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,11 +33,17 @@ public class PostController implements Constants {
 	@Autowired
 	private PostService postService;
 
+	@Autowired
+	private ProfileService profileService;
+
 	private final CustomException exception = new CustomException();
 	
 	private ResponseObject<?> response;
 
-	@PostMapping(DEFAULT_POST_URI + "/{profileId}" + "/create")
+//
+// CREATE
+//
+	@PostMapping(DEFAULT_POST_URI + "/{profileId}")
 	public ResponseEntity<ResponseObject<?>> createPost(
 			@PathVariable UUID profileId,
 			@RequestParam String title,
@@ -79,7 +86,31 @@ public class PostController implements Constants {
 		}
 	}
 
-	@GetMapping(DEFAULT_POST_URI + "/read")
+//
+//	READ
+//
+	@GetMapping("/v1/profile" + "/{profileId}" + "/post")
+	public ResponseEntity<ResponseObject<?>> readPostWithProfileId(@PathVariable UUID profileId) {
+		try {
+			List<Post> result = postService.getAllPostsByProfileId(profileId);
+			response = (result == null)
+					? exception.notFound(profileId)
+					: new ResponseObject<>(HttpStatus.OK.value(), "ok", result);
+			if(result == null) {
+				return ResponseEntity.badRequest().body(response);
+			}
+			return ResponseEntity.ok(response);
+		} catch (Exception e) {
+			response = new ResponseObject<>(
+					HttpStatus.INTERNAL_SERVER_ERROR.value(),
+					"bad",
+					"internal error occurred"
+			);
+			logger.error(e.getMessage());
+			return ResponseEntity.badRequest().body(response);
+		}
+	}
+
 	public ResponseEntity<ResponseObject<?>> readPost(UUID postId) {
 		try {
 			if (postId.toString().length() != 36) {
@@ -109,7 +140,10 @@ public class PostController implements Constants {
 		}
 	}
 
-	@PutMapping(DEFAULT_POST_URI + "/{profileId}" + "/update")
+//
+//	UPDATE
+//
+	@PutMapping(DEFAULT_POST_URI + "/{profileId}")
 	public ResponseEntity<ResponseObject<?>> updatePost(
 			@PathVariable UUID profileId,
 			@RequestParam UUID postId,
@@ -128,7 +162,7 @@ public class PostController implements Constants {
 				response = new ResponseObject<>(
 						HttpStatus.BAD_REQUEST.value(),
 						"bad",
-						"At least one of title, description, requirementes, responsibilities or location must be provided."
+						"At least one of title, description, requirements, responsibilities or location must be provided."
 				);
 				return ResponseEntity.badRequest().body(response);
 			}
@@ -163,7 +197,10 @@ public class PostController implements Constants {
 		}
 	}
 
-	@DeleteMapping(DEFAULT_POST_URI + "/{profileId}" + "/delete")
+//
+// DELETE
+//
+	@DeleteMapping(DEFAULT_POST_URI + "/{profileId}")
 	public ResponseEntity<ResponseObject<?>> deletePost(
 			@PathVariable UUID profileId,
 			@RequestParam UUID postId
@@ -186,7 +223,7 @@ public class PostController implements Constants {
 	}
 
 	// Other
-	@GetMapping(DEFAULT_POST_URI + "/all")
+	@GetMapping(DEFAULT_POST_URI)
 	public ResponseEntity<ResponseObject<?>> getAllPosts() {
 		response = new ResponseObject<>(HttpStatus.OK.value(), "ok", postService.fetchAll());
 
